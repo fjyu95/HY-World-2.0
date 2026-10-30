@@ -165,10 +165,14 @@ We recommend **CUDA 12.8** and **Python 3.11+**. The easiest path is to prepare 
 #### 1. Create the shared environment
 
 ```bash
-git clone https://github.com/Tencent-Hunyuan/HY-World-2.0
+git clone --recursive https://github.com/Tencent-Hunyuan/HY-World-2.0
 cd HY-World-2.0
 
+# If you already cloned without --recursive, fetch the submodules manually:
+# git submodule update --init --recursive
+
 conda create -n hyworld2 python=3.11.15
+# conda create -n hyworld2 --clone py310-torch271-cu128-base
 conda activate hyworld2
 ```
 
@@ -178,11 +182,15 @@ After this step, the environment is ready for **worldrecon / WorldMirror 2.0**.
 
 ```bash
 # Base dependencies shared by worldrecon and worldgen
+pip install torch==2.7.1 torchvision --index-url https://download.pytorch.org/whl/cu128
 pip install -r requirements.txt
 
-# Recommended: install the custom gsplat variant once for both worldrecon and worldgen
+# Recommended: install the custom gsplat variant once for both worldrecon and worldgen.
+# This builds a CUDA extension, so nvcc must match your PyTorch CUDA version
+# (e.g. nvcc 12.8 for torch cu128). If your default nvcc differs, set CUDA_HOME first:
+#   export CUDA_HOME=/usr/local/cuda-12.8
 cd hyworld2/worldgen/third_party/gsplat_maskgaussian
-pip install -e . --no-build-isolation
+MAX_JOBS=$(nproc) pip install -e . --no-build-isolation
 cd ../../../../
 ```
 

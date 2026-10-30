@@ -10,3 +10,5 @@ skyseg.onnx
 *.ckpt
 CLAUDE.md
 commands.sh
+.vscode/
+# hyworld2/worldgen/third_party/gsplat_maskgaussian/gsplat/cuda/csrc/third_party/glm
