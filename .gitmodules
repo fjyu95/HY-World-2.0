@@ -1,3 +1,7 @@
 [submodule "hyworld2/worldgen/third_party/recastnavigation"]
 	path = hyworld2/worldgen/third_party/recastnavigation
 	url = https://github.com/recastnavigation/recastnavigation.git
+
+[submodule "hyworld2/worldgen/third_party/gsplat_maskgaussian/gsplat/cuda/csrc/third_party/glm"]
+	path = hyworld2/worldgen/third_party/gsplat_maskgaussian/gsplat/cuda/csrc/third_party/glm
+	url = https://github.com/g-truc/glm.git
