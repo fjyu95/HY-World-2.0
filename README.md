@@ -222,7 +222,10 @@ Run the following extra steps only if you need **worldgen**. These commands assu
 
 ```bash
 # Git-based dependencies require torch/CUDA to be installed first
-pip install --no-build-isolation -r requirements_git.txt
+# pip install --no-build-isolation -r requirements_git.txt
+MAX_JOBS=$(nproc) pip install -vv --no-build-isolation --progress-bar on -r requirements_git.txt
+# pip install -vv --no-build-isolation git+https://github.com/nianticlabs/spz.git@v3.0.0 # 单个安装示例
+# bash install_git_deps.sh # 自动化安装及排错
 
 # recastnavigation is managed as a git submodule
 git submodule update --init --recursive
