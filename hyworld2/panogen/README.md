@@ -9,16 +9,22 @@ We recommend CUDA 12.8 for installation.
 ```bash
 # 1. Clone the repository
 git clone https://github.com/Tencent-Hunyuan/HY-World-2.0
-cd HY-World-2.0
 
 # 2. Create conda environment
 conda create -n hyworld2-pano python=3.10
+# On this machine you can clone the existing base env instead:
+# conda create -n hyworld2-pano --clone py310-torch271-cu128-base
 conda activate hyworld2-pano
 
-# 3. Install PyTorch (CUDA 11.8)
-pip install torch==2.7.1 torchvision==0.22.1 torchaudio==2.7.1 --index-url https://download.pytorch.org/whl/cu118
-
+# 3. Install PyTorch — pick ONE index-url matching your GPU:
+#   Ampere    (RTX 3090, A100):               cu111+
+#   Ada/Hopper    (RTX 4090, H100, A6000):    cu118+，recommended cu121+
+#   Blackwell (RTX 5090, B200, RTX PRO 5000): cu128+
+pip install torch==2.7.1 torchvision==0.22.1 torchaudio==2.7.1 --index-url https://download.pytorch.org/whl/cu128
+# pip install torch==2.7.1 torchvision==0.22.1 torchaudio==2.7.1 --index-url https://download.pytorch.org/whl/cu118
+ 
 # 4. Install dependencies
+cd HY-World-2.0/hyworld2/panogen
 pip install -r requirements.txt
 ```
 

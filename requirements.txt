@@ -52,4 +52,5 @@ scikit-build-core
 nanobind
 pybind11
 
+# NOTE: numpy==1.26.4 is required by some packages, including open3d/pycolmap/onnxruntime etc.
 numpy==1.26.4

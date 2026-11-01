@@ -232,11 +232,12 @@ git submodule update --init --recursive
 
 # Recast navmesh extension for trajectory planning
 cd hyworld2/worldgen/third_party/navmesh
-pip install . --no-build-isolation
+pip install . --no-build-isolation # deps recastnavigation
 cd ../../../../
 ```
 
-For **HY-Pano-2** installation, please refer to **[hyworld2/panogen/README.md](hyworld2/panogen/README.md)**.
+For **HY-Pano-2** installation, please refer to **[hyworld2/panogen/README.md](hyworld2/panogen/README.md)**. 
+Note that HY-Pano-2 has dependency versions (e.g. numpy, transformers) that conflict with the main environment — build it in a separate conda environment.
 
 ### Code Usage — Panorama Generation (HY-Pano-2)
 
