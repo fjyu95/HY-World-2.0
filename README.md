@@ -214,6 +214,18 @@ rm -rf flash-attention
 ```bash
 # Simpler alternative: FlashAttention-2
 pip install flash-attn --no-build-isolation
+MAX_JOBS=$(nproc) pip install flash-attn==2.8.3 --no-build-isolation
+
+python -c "import torch; print(torch.__version__, torch.compiled_with_cxx11_abi())"
+
+# Download torch2.7 + abiTRUE matching wheel
+curl -L -o flash_attn-2.8.3+cu12torch2.7cxx11abiTRUE-cp310-cp310-linux_x86_64.whl \
+  https://github.com/Dao-AILab/flash-attention/releases/download/v2.8.3/flash_attn-2.8.3+cu12torch2.7cxx11abiTRUE-cp310-cp310-linux_x86_64.whl
+ 
+pip install flash_attn-2.8.3+cu12torch2.7cxx11abiTRUE-cp310-cp310-linux_x86_64.whl
+ 
+# Verify installation
+python -c "import flash_attn; print(flash_attn.__version__)"
 ```
 
 #### 3. Add extra World Generation dependencies
