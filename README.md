@@ -320,6 +320,21 @@ torchrun --nproc_per_node=2 -m hyworld2.worldrecon.pipeline \
 
 > **Important:** In multi-GPU mode, the number of input images must be **>= the number of GPUs**. For example, with `--nproc_per_node=8`, provide at least 8 images.
 
+> **Note — `skyseg.onnx` download failure:** On first run, the pipeline tries to download `skyseg.onnx` (sky segmentation model) from HuggingFace into the current working directory. If HuggingFace is unreachable (`Network is unreachable` / `Load model skyseg.onnx failed`), pick one of the following:
+>
+> ```bash
+> # 1. Download it manually once (it is reused on subsequent runs):
+> curl -L -o skyseg.onnx https://hf-mirror.com/JianyuanWang/skyseg/resolve/main/skyseg.onnx
+> # or via a local proxy: export https_proxy=http://127.0.0.1:7897
+> # curl -L -o skyseg.onnx https://huggingface.co/JianyuanWang/skyseg/resolve/main/skyseg.onnx
+>
+> # 2. Use the model's built-in sky prediction instead of the ONNX model:
+> python -m hyworld2.worldrecon.pipeline --input_path path/to/images --sky_mask_source model
+>
+> # 3. Disable sky masking entirely (fine for indoor scenes):
+> python -m hyworld2.worldrecon.pipeline --input_path path/to/images --no_sky_mask
+> ```
+
 ### Gradio App — WorldMirror 2.0
 
 We provide an interactive [Gradio](https://www.gradio.app/) web demo for WorldMirror 2.0. Upload images or videos and visualize 3DGS, point clouds, depth maps, normal maps, and camera parameters in your browser.
