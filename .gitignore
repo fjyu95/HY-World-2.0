@@ -3,7 +3,8 @@ __pycache__/
 *.py[cod]
 *$py.class
 .gradio/
-inference_output/
+inference_output*
+inference_input*
 gradio_demo_output/
 skyseg.onnx
 *.safetensors
@@ -13,3 +14,4 @@ commands.sh
 .vscode/
 # hyworld2/worldgen/third_party/gsplat_maskgaussian/gsplat/cuda/csrc/third_party/glm
 hyworld2/worldgen/third_party/MoGe
+examples/worldrecon/tandt_db*
