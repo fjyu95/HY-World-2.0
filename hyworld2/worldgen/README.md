@@ -30,19 +30,45 @@ It covers the last three stages of the full HY-World 2.0 pipeline:
 - A running [vLLM](https://vllm.ai/) server hosting a VLM (e.g. Qwen3-VL-8B) for trajectory planning (stages 1 & 2). You need to obtain `LLM_ADDR`, `LLM_PORT`, and `LLM_NAME` from your vLLM deployment and pass them as `--llm_addr`, `--llm_port`, `--llm_name` to `traj_generate.py` and `traj_render.py`. Example:
 
   ```bash
-  # Launch vLLM server (on a separate GPU group or machine)
-  CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7 vllm serve Qwen/Qwen3-VL-8B-Instruct \
-      --served-model-name Qwen/Qwen3-VL-8B-Instruct \
-      --port 8000 \
-      --host 0.0.0.0 \
-      --tensor-parallel-size 8 \
-      --pipeline-parallel-size 1 \
-      --max-model-len 32768 \
-      --trust-remote-code \
-      --gpu-memory-utilization 0.80
+  export HF_ENDPOINT=https://hf-mirror.com
+  clashctl off # or other better way
+  hf download Qwen/Qwen3-VL-8B-Instruct
+
+  # Install & launch vLLM — full setup guide with speed tips and troubleshooting: see vllm_setup.md
+  conda activate hyworld2-vllm
+  CUDA_VISIBLE_DEVICES=5,6 vllm serve Qwen/Qwen3-VL-8B-Instruct \
+    --served-model-name Qwen/Qwen3-VL-8B-Instruct \
+    --port 8001 \
+    --host 0.0.0.0 \
+    --tensor-parallel-size 2 \
+    --pipeline-parallel-size 1 \
+    --max-model-len 32768 \
+    --trust-remote-code \
+    --gpu-memory-utilization 0.80
   ```
 
-- Model checkpoints for WorldStereo 2.0 (see [Model Zoo](../../README.md#-model-zoo), and codes will download weights automatically)
+- Model checkpoints for WorldStereo 2.0 (see [Model Zoo](../../README.md#-model-zoo), and codes will download weights automatically). To pre-download everything at once:
+
+  ```bash
+  export HF_ENDPOINT=https://hf-mirror.com
+
+  hf auth login        # 粘贴 token(旧版命令: huggingface-cli login)
+  hf auth whoami       # 验证
+
+  # Stage 1–2: VLM for trajectory planning & captioning (served by vLLM)
+  hf download Qwen/Qwen3-VL-8B-Instruct
+
+  # Stage 1: segmentation/detection models used by traj_generate.py
+  # hf download facebook/sam3
+  hf download unsloth/sam3.1        # facebook/sam3 is gated; this non-gated mirror is already wired in the code
+  hf download naver-iv/zim-anything-vitl --include "zim_vit_l_2092/*"   # encoder.onnx + decoder.onnx
+  hf download IDEA-Research/grounding-dino-tiny --include "*.json" "*.txt" "model.safetensors"
+
+  # Stage 3–4: WorldStereo 2.0 weights (incl. tokenizer/UMT5/CLIP/VAE subfolders)
+  # + MoGe depth-normal backbone
+  hf download hanshanxue/WorldStereo
+  hf download Ruicheng/moge-2-vitl-normal
+  ```
 
 ### Installation
 

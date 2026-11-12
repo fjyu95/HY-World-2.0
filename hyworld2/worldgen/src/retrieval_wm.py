@@ -822,8 +822,10 @@ class PanoramaMemoryBank:
         rank0_log(f"Initializing SAM3 Model...")
         if sam3_model is None or sam3_processor is None:
             from transformers import Sam3VideoModel, Sam3VideoProcessor
-            self.sam3_model = Sam3VideoModel.from_pretrained("facebook/sam3").to(device, dtype=torch.bfloat16)
-            self.sam3_processor = Sam3VideoProcessor.from_pretrained("facebook/sam3")
+            # self.sam3_model = Sam3VideoModel.from_pretrained("facebook/sam3").to(device, dtype=torch.bfloat16)
+            # self.sam3_processor = Sam3VideoProcessor.from_pretrained("facebook/sam3")
+            self.sam3_model = Sam3VideoModel.from_pretrained("unsloth/sam3.1").to(device, dtype=torch.bfloat16)
+            self.sam3_processor = Sam3VideoProcessor.from_pretrained("unsloth/sam3.1")
         else:
             self.sam3_model = sam3_model
             self.sam3_processor = sam3_processor

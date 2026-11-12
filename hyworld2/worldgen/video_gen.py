@@ -23,7 +23,8 @@ from src.sp_utils.parallel_states import initialize_parallel_state
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 timer = Timer()
 
-SAM3_REPO_ID = "facebook/sam3"
+# SAM3_REPO_ID = "facebook/sam3"  # gated repo — requires manual access approval on HF
+SAM3_REPO_ID = "unsloth/sam3.1"  # non-gated mirror; same architecture (model_type: sam3)
 MOGE_ID = "Ruicheng/moge-2-vitl-normal"
 
 if __name__ == '__main__':

@@ -3,6 +3,7 @@
 #torchvision==0.22.1
 diffusers==0.36.0
 transformers==5.2.0
+huggingface_hub==0.36.2
 accelerate
 peft==0.18.1
 safetensors
@@ -54,3 +55,5 @@ pybind11
 
 # NOTE: numpy==1.26.4 is required by some packages, including open3d/pycolmap/onnxruntime etc.
 numpy==1.26.4
+
+httpx[socks]
