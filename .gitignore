@@ -15,3 +15,6 @@ commands.sh
 # hyworld2/worldgen/third_party/gsplat_maskgaussian/gsplat/cuda/csrc/third_party/glm
 hyworld2/worldgen/third_party/MoGe
 examples/worldrecon/tandt_db*
+examples/panogen-full
+hyworld2/panogen/*.png
+hyworld2/panogen/*.jpg

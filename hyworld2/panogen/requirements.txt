@@ -22,6 +22,6 @@ loguru>=0.7.3
 
 # Interactive demo
 gradio>=4.21.0
-
+peft
 
 
