@@ -3,7 +3,6 @@
 #torchvision==0.22.1
 diffusers==0.36.0
 transformers==5.2.0
-huggingface_hub==0.36.2
 accelerate
 peft==0.18.1
 safetensors
@@ -55,5 +54,10 @@ pybind11
 
 # NOTE: numpy==1.26.4 is required by some packages, including open3d/pycolmap/onnxruntime etc.
 numpy==1.26.4
+
+huggingface_hub
+# NOTE: do NOT downgrade huggingface_hub to 0.x — transformers 5.x requires
+# hub 1.x API (is_offline_mode). 0.36.x breaks the import.
+# Fix if broken: pip install "huggingface_hub==1.33.0" -i https://mirrors.aliyun.com/pypi/simple/
 
 httpx[socks]

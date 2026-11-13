@@ -18,3 +18,4 @@ examples/worldrecon/tandt_db*
 examples/panogen-full
 hyworld2/panogen/*.png
 hyworld2/panogen/*.jpg
+examples/worldgen/case000

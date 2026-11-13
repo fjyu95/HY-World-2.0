@@ -305,7 +305,7 @@ if __name__ == '__main__':
         else:
             with timer.track("Predict panorama depth"):
                 full_depth = pred_pano_depth(depth_model, full_img)
-                edge_mask = torch.from_numpy(utils3d.numpy.depth_edge(full_depth["distance"].cpu().numpy(), rtol=0.1)).bool()
+                edge_mask = torch.from_numpy(utils3d.numpy.depth_edge(full_depth["distance"].float().cpu().numpy(), rtol=0.1)).bool()
                 sky_mask_for_depth = sky_mask
                 if sky_mask_for_depth.shape != edge_mask.shape:
                     sky_mask_for_depth = F.interpolate(
@@ -322,7 +322,7 @@ if __name__ == '__main__':
                     full_depth["distance"][contract_mask] = (2 * contract_distance) - (contract_distance ** 2 / (full_depth["distance"][contract_mask] + 1e-6))
             with timer.track("[IO] Save panorama depth"):
                 torch.save(full_depth, f"{scene_path}/render_results/full_depth_prediction.pt")
-        edge_mask = torch.from_numpy(utils3d.numpy.depth_edge(full_depth["distance"].cpu().numpy(), rtol=0.1)).bool()
+        edge_mask = torch.from_numpy(utils3d.numpy.depth_edge(full_depth["distance"].float().cpu().numpy(), rtol=0.1)).bool()
         full_depth["distance"] = full_depth["distance"].to(device)
         full_depth["rays"] = full_depth["rays"].to(device)
         sky_mask_for_depth = sky_mask
@@ -377,8 +377,8 @@ if __name__ == '__main__':
         # save normals
         with timer.track("Get panorama normal"):
             normal_map, _ = erp_distance_ray_to_normal(
-                full_depth["distance"].cpu().numpy(),
-                full_depth["rays"].cpu().numpy(),
+                full_depth["distance"].float().cpu().numpy(),
+                full_depth["rays"].float().cpu().numpy(),
                 smooth_sigma=0.5,
                 facing_camera=True  # Keep normals facing the camera.
             )
@@ -449,7 +449,7 @@ if __name__ == '__main__':
 
                 # Prepare data on the main thread before parallel IO.
                 save_tasks.append(('image', splitted_image, f"{scene_path}/render_results/polar_bank/images/{fname}.png"))
-                save_tasks.append(('depth', depth.cpu().numpy(), f"{scene_path}/render_results/polar_bank/depths/{fname}.png"))
+                save_tasks.append(('depth', depth.float().cpu().numpy(), f"{scene_path}/render_results/polar_bank/depths/{fname}.png"))
 
             if save_tasks:
                 with ThreadPoolExecutor(max_workers=16) as executor:
@@ -504,7 +504,7 @@ if __name__ == '__main__':
                 bank_cameras[fname] = {"intrinsic": K.tolist(), "extrinsic": splitted_extrinsics[i].tolist()}
 
                 save_tasks.append(('image', splitted_image, f"{scene_path}/render_results/pano_bank/images/{fname}.png"))
-                save_tasks.append(('depth', depth.cpu().numpy(), f"{scene_path}/render_results/pano_bank/depths/{fname}.png"))
+                save_tasks.append(('depth', depth.float().cpu().numpy(), f"{scene_path}/render_results/pano_bank/depths/{fname}.png"))
 
             if save_tasks:
                 with ThreadPoolExecutor(max_workers=16) as executor:
@@ -734,8 +734,8 @@ if __name__ == '__main__':
                             else:
                                 is_cluster_obj = False
 
-                            masks_np = masks.detach().cpu().numpy() if isinstance(masks, torch.Tensor) else np.array(masks)
-                            scores_np = scores.detach().cpu().numpy() if scores is not None else [0.0] * len(masks)
+                            masks_np = masks.detach().float().cpu().numpy() if isinstance(masks, torch.Tensor) else np.array(masks)
+                            scores_np = scores.detach().float().cpu().numpy() if scores is not None else [0.0] * len(masks)
                             if masks_np.ndim == 2: masks_np = masks_np[None, ...]
 
                             for m_k, mask in enumerate(masks_np):
@@ -842,7 +842,7 @@ if __name__ == '__main__':
                 with timer.track("Processing object masks (ranking)"):
                     segmentation_data, _ = get_topk_seg_data(segmentation_data, topk=999)  # Sort only.
                 with open(os.path.join(camera_dir, "target_camera.json"), "w") as f:
-                    json.dump(segmentation_data, f, indent=4)
+                    json.dump(segmentation_data, f, indent=4, default=lambda o: o.tolist() if isinstance(o, np.ndarray) else float(o))
 
                 if valid_masks_vis:
                     vis_path = f"{scene_path}/render_results/segmentation_vis.png"
