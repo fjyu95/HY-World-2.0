@@ -107,6 +107,7 @@ python -c "import torch, vllm; print(torch.__version__, vllm.__version__, torch.
 
 ```bash
 conda activate hyworld2-vllm
+# 首次启动大约需要~3-5分钟，单卡也可以
 CUDA_VISIBLE_DEVICES=5,6 vllm serve Qwen/Qwen3-VL-8B-Instruct \
     --served-model-name Qwen/Qwen3-VL-8B-Instruct \
     --port 8001 --host 0.0.0.0 \

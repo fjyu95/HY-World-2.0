@@ -157,3 +157,5 @@ if __name__ == '__main__':
 
         if rank == 0:
             timer.summary()
+
+    dist.destroy_process_group()

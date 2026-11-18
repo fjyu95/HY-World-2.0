@@ -77,8 +77,8 @@ HF_CACHE_DIR = os.path.expanduser("~/.cache/huggingface/hub")
 ZIM_REPO_ID = "naver-iv/zim-anything-vitl"
 ZIM_SUBFOLDER = "zim_vit_l_2092"
 GD_REPO_ID = "IDEA-Research/grounding-dino-tiny"
-# SAM3_REPO_ID = "facebook/sam3"  # gated repo — requires manual access approval on HF
-SAM3_REPO_ID = "unsloth/sam3.1"  # non-gated mirror; same architecture (model_type: sam3)
+SAM3_REPO_ID = "facebook/sam3"
+# SAM3_REPO_ID = "unsloth/sam3.1"  # non-gated mirror; same architecture (model_type: sam3)
 MOGE_ID = "Ruicheng/moge-2-vitl-normal"
 
 

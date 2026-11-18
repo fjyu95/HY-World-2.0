@@ -822,10 +822,10 @@ class PanoramaMemoryBank:
         rank0_log(f"Initializing SAM3 Model...")
         if sam3_model is None or sam3_processor is None:
             from transformers import Sam3VideoModel, Sam3VideoProcessor
-            # self.sam3_model = Sam3VideoModel.from_pretrained("facebook/sam3").to(device, dtype=torch.bfloat16)
-            # self.sam3_processor = Sam3VideoProcessor.from_pretrained("facebook/sam3")
-            self.sam3_model = Sam3VideoModel.from_pretrained("unsloth/sam3.1").to(device, dtype=torch.bfloat16)
-            self.sam3_processor = Sam3VideoProcessor.from_pretrained("unsloth/sam3.1")
+            self.sam3_model = Sam3VideoModel.from_pretrained("facebook/sam3").to(device, dtype=torch.bfloat16)
+            self.sam3_processor = Sam3VideoProcessor.from_pretrained("facebook/sam3")
+            # self.sam3_model = Sam3VideoModel.from_pretrained("unsloth/sam3.1").to(device, dtype=torch.bfloat16)  # non-gated mirror
+            # self.sam3_processor = Sam3VideoProcessor.from_pretrained("unsloth/sam3.1")
         else:
             self.sam3_model = sam3_model
             self.sam3_processor = sam3_processor
@@ -1133,11 +1133,14 @@ class PanoramaMemoryBank:
         torch.cuda.empty_cache()
         if self.rank == 0:
             if not (skip_exist and os.path.exists(f"{self.world_mirror_dir}/name_map.json")):
+                # subprocess runs with cwd=".." — pass absolute paths so a relative
+                # --target_path still resolves correctly.
+                wm_dir = os.path.abspath(self.world_mirror_dir)
                 wm_cmd = [
                     "torchrun", f"--nproc_per_node={self.world_size}", "-m", "worldrecon.pipeline",
-                    "--input_path", f"{self.world_mirror_dir}/images",
-                    "--prior_cam_path", f"{self.world_mirror_dir}/cameras.json",
-                    "--strict_output_path", f"{self.world_mirror_dir}/results",
+                    "--input_path", f"{wm_dir}/images",
+                    "--prior_cam_path", f"{wm_dir}/cameras.json",
+                    "--strict_output_path", f"{wm_dir}/results",
                     "--target_size", "832",
                     "--log_time",
                     "--no_interactive",

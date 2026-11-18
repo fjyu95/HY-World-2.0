@@ -55,6 +55,11 @@ pybind11
 # NOTE: numpy==1.26.4 is required by some packages, including open3d/pycolmap/onnxruntime etc.
 numpy==1.26.4
 
+# NOTE: on Blackwell (sm_120) GPUs, torch 2.7.1's bundled NCCL 2.26.2 crashes with
+# "illegal memory access" on collectives >~64KB. Upgrade NCCL >= 2.27.x (ABI-compatible,
+# torch loads it dynamically):
+#   pip install "nvidia-nccl-cu12==2.27.3"
+
 huggingface_hub
 # NOTE: do NOT downgrade huggingface_hub to 0.x — transformers 5.x requires
 # hub 1.x API (is_offline_mode). 0.36.x breaks the import.

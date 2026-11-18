@@ -19,3 +19,5 @@ examples/panogen-full
 hyworld2/panogen/*.png
 hyworld2/panogen/*.jpg
 examples/worldgen/case000
+hyworld2/worldgen/facebook/
+hyworld2/worldgen/unsloth/

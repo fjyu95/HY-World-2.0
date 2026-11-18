@@ -59,15 +59,21 @@ It covers the last three stages of the full HY-World 2.0 pipeline:
   hf download Qwen/Qwen3-VL-8B-Instruct
 
   # Stage 1: segmentation/detection models used by traj_generate.py
-  # hf download facebook/sam3
-  hf download unsloth/sam3.1        # facebook/sam3 is gated; this non-gated mirror is already wired in the code
+  hf download facebook/sam3       # gated; then symlink the snapshot to ./facebook/sam3 (transformers resolves the local dir first):
+  # hf download unsloth/sam3.1      # non-gated alternative mirror (same architecture)
   hf download naver-iv/zim-anything-vitl --include "zim_vit_l_2092/*"   # encoder.onnx + decoder.onnx
   hf download IDEA-Research/grounding-dino-tiny --include "*.json" "*.txt" "model.safetensors"
 
-  # Stage 3–4: WorldStereo 2.0 weights (incl. tokenizer/UMT5/CLIP/VAE subfolders)
-  # + MoGe depth-normal backbone
-  hf download hanshanxue/WorldStereo
-  hf download Ruicheng/moge-2-vitl-normal
+  # Stage 3: WorldStereo 2.0 + memory bank + MoGe depth-normal backbone
+  hf download hanshanxue/WorldStereo              # transformer/UMT5/CLIP/VAE subfolders
+  hf download Ruicheng/moge-2-vitl-normal         # MoGe model.pt (monocular depth)
+  hf download ewrfcas/Uni3C                       # controlnet.pth (worldstereo.py)
+  hf download facebook/dinov2-base                # memory-bank feature extractor (retrieval_wm.py)
+  hf download tencent/HY-World-2.0 --include "HY-WorldMirror-2.0/*"   # apply_worldmirror subprocess
+
+  # Stage 5 (world_gs_trainer): LPIPS torchvision weights — not a HF repo;
+  # auto-downloads on first run, or fetch manually:
+  wget -P ~/.cache/torch/hub/checkpoints https://download.pytorch.org/models/vgg16-397923af.pth
   ```
 
 ### Installation
