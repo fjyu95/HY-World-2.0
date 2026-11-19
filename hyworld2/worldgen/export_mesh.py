@@ -13,6 +13,7 @@ import argparse
 import json
 import math
 import os
+import time
 from glob import glob
 
 import numpy as np
@@ -55,6 +56,7 @@ def main():
     parser.add_argument("--gpu_tsdf", action="store_true",
                         help="use GPU VoxelBlockGrid TSDF (hangs on sm_120/Blackwell with open3d<=0.18)")
     args = parser.parse_args()
+    total_tic = time.time()
 
     device = torch.device(f"cuda:{args.gpu_id}")
     os.makedirs(args.out_dir, exist_ok=True)
@@ -75,13 +77,16 @@ def main():
     widths = [parser_obj.imsize_dict[cid][0] for cid in parser_obj.camera_ids]
     heights = [parser_obj.imsize_dict[cid][1] for cid in parser_obj.camera_ids]
 
+    ckpt_tic = time.time()
     splats = load_splats(args.ckpt, device)
+    print(f"[Timing] Load checkpoints: {time.time() - ckpt_tic:.1f}s")
     means = splats["means"]
     colors = torch.cat([splats["sh0"], splats["shN"]], dim=1)             # (N, K, 3)
     sh_degree = int(math.sqrt(colors.shape[1]) - 1)
 
     from gsplat.rendering import rasterization
 
+    render_tic = time.time()
     rgbmaps, depthmaps = [], []
     for j in tqdm.tqdm(range(camtoworlds.shape[0]), desc="Rendering RGB and depth maps"):
         c2w = torch.from_numpy(camtoworlds[j].copy()[None]).float().to(device)
@@ -103,6 +108,7 @@ def main():
             )  # [1, H, W, 4]
         rgbmaps.append(torch.clamp(renders[0, :, :, 0:3].permute(2, 0, 1), 0.0, 1.0).cpu())
         depthmaps.append(renders[0, :, :, 3:4].permute(2, 0, 1).cpu())
+    print(f"[Timing] Render RGB+ED x{camtoworlds.shape[0]}: {time.time() - render_tic:.1f}s")
 
     import open3d as o3d
     from gs.extract_mesh import (
@@ -121,10 +127,13 @@ def main():
     print("Extracting bounded mesh ...")
     depth_trunc = (radius * 2.0) if args.depth_trunc < 0 else args.depth_trunc
     voxel_size = (depth_trunc / 128) if args.voxel_size < 0 else args.voxel_size
-    # sdf_trunc = (4.0 * voxel_size) if args.sdf_trunc < 0 else args.sdf_trunc
-    sdf_trunc = 0.3 if args.sdf_trunc < 0 else args.sdf_trunc
-    print(f"  voxel_size={voxel_size}, sdf_trunc={sdf_trunc}, depth_trunc={depth_trunc}")
+    print(f"  depth_trunc={depth_trunc}, voxel_size={voxel_size}")
 
+    t_size = 4.0 * voxel_size # 或固定0.3
+    sdf_trunc = t_size if args.sdf_trunc < 0 else args.sdf_trunc
+    print(f"  sdf_trunc={sdf_trunc}")
+
+    tsdf_tic = time.time()
     if args.gpu_tsdf:
         mesh = extract_mesh_bounded_gpu(
             rgbmaps, depthmaps, camtoworlds, Ks, widths, heights,
@@ -136,8 +145,10 @@ def main():
             rgbmaps, depthmaps, camtoworlds, Ks, widths, heights,
             voxel_size=voxel_size, sdf_trunc=sdf_trunc, depth_trunc=depth_trunc,
         )
+    print(f"[Timing] TSDF fusion: {time.time() - tsdf_tic:.1f}s")
 
     print("Post-processing mesh ...")
+    post_tic = time.time()
     mesh_post = post_process_mesh(mesh, cluster_to_keep=args.num_cluster)
     post_path = f"{args.out_dir}/fuse_post.ply"
     o3d.io.write_triangle_mesh(post_path, mesh_post)
@@ -165,6 +176,9 @@ def main():
             o3d.io.write_triangle_mesh(
                 f"{args.out_dir}/fuse_simplified.ply", mesh_simplified)
             print(f"Saved {args.out_dir}/fuse_simplified.ply")
+    print(f"[Timing] Post-process+write: {time.time() - post_tic:.1f}s")
+
+    print(f"[Timing] Total: {time.time() - total_tic:.1f}s")
 
 
 if __name__ == "__main__":

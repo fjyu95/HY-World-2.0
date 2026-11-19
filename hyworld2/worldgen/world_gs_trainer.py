@@ -1372,6 +1372,7 @@ class Runner:
                     data, f"{self.ckpt_dir}/ckpt_{step}_rank{self.world_rank}.pt"
                 )
             if (step in ply_steps or step == max_steps - 1) and cfg.save_ply:
+                ply_tic = time.time()
                 # load scene-level meta info
                 if os.path.exists(f"{'/'.join(cfg.data_dir.split('/')[:-1])}/meta_info.json"):
                     with open(f"{'/'.join(cfg.data_dir.split('/')[:-1])}/meta_info.json") as f:
@@ -1622,8 +1623,12 @@ class Runner:
                         except:
                             print("Failed to convert to spx, please install gsbox at first.")
 
+                if self.world_rank == 0:
+                    print(f"[Timing] PLY/SPZ export took {time.time() - ply_tic:.1f}s")
+
                 # training over, saving mesh
                 if cfg.export_mesh:
+                    mesh_tic = time.time()
                     import open3d as o3d
                     from gs.extract_mesh import estimate_bounding_sphere, extract_mesh_bounded, post_process_mesh
                     if self.world_rank == 0:
@@ -1711,6 +1716,8 @@ class Runner:
                                     f"{self.ply_dir}/fuse_simplified.ply", mesh_simplified)
 
                     dist.barrier()
+                    if self.world_rank == 0:
+                        print(f"[Timing] Mesh export took {time.time() - mesh_tic:.1f}s")
 
             # Turn Gradients into Sparse Tensor before running optimizer
             if cfg.sparse_grad:
@@ -1863,8 +1870,11 @@ class Runner:
 
             # eval the full set
             if step in eval_steps:
+                eval_tic = time.time()
                 self.eval(step)
                 self.render_traj(step)
+                if world_rank == 0:
+                    print(f"[Timing] Eval+render_traj took {time.time() - eval_tic:.1f}s")
                 self.is_training = True  # restore training mode after eval
 
             # run compression
@@ -1883,6 +1893,9 @@ class Runner:
                 )
                 # Update the scene.
                 self.viewer.update(step, num_train_rays_per_step)
+
+        if world_rank == 0:
+            print(f"[Timing] Total train loop took {time.time() - global_tic:.1f}s")
 
     @torch.no_grad()
     def eval(self, step: int, stage: str = "val"):
