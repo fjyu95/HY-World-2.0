@@ -139,3 +139,18 @@ python pipeline_with_qwen_image.py --image input.png
 python pipeline_with_qwen_image.py --image input.png \
     --prompt "A sunny outdoor scene." --seed 42 --save output_panorama.png
 ```
+
+---
+
+## Performance Benchmark
+
+Measured on 5 random images (960×1952 output, seed 42):
+
+| Backend | GPUs | Model load | Inference / image | Peak VRAM |
+|---------|------|------------|-------------------|-----------|
+| Qwen-Image-Edit + HY-Pano-2.0 LoRA | 1 | ~27s | **~158s** | 62GB |
+| HunyuanImage-3 (`device_map=auto`) | 4 | ~45s\* | **~522s** | ~53GB/GPU (~193GB total) |
+
+\* First run ~587s including HuggingFace weight download; first inference is slower (~32min) due to cold start.
+
+To reproduce: `python bench_panogen.py` (randomly picks 5 images from `examples/panogen` and benchmarks both backends).

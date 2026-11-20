@@ -21,3 +21,5 @@ hyworld2/panogen/*.jpg
 examples/worldgen/case*
 hyworld2/worldgen/facebook/
 hyworld2/worldgen/unsloth/
+*result/
+*results/

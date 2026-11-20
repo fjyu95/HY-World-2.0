@@ -38,12 +38,26 @@ Usage:
 
 import argparse
 import os
+import time
 import numpy as np
 from pathlib import Path
 from PIL import Image
+
+import torch
+
 from hunyuan_image_3 import HunyuanImage3ForCausalMM
 
 PANO_INSTRUCTION = "Expand this image to a 360-degree equirectangular panorama."
+
+
+def _cuda_peak_mem_str() -> str:
+    """Per-device peak allocated VRAM, e.g. 'cuda:0=12.3GB, cuda:1=0.0GB'."""
+    if not torch.cuda.is_available():
+        return "n/a"
+    return ", ".join(
+        f"cuda:{i}={torch.cuda.max_memory_allocated(i) / 1024**3:.1f}GB"
+        for i in range(torch.cuda.device_count())
+    )
 
 
 # ============================================================
@@ -170,6 +184,7 @@ class HunyuanPanoPipeline:
         model_dir = _resolve_model_dir(pretrained_model_name_or_path, subfolder)
 
         print(f"[Init] Loading model from {model_dir} ...")
+        load_tic = time.time()
         kwargs = dict(
             attn_implementation=attn_impl,
             trust_remote_code=True,
@@ -180,7 +195,7 @@ class HunyuanPanoPipeline:
         )
         model = HunyuanImage3ForCausalMM.from_pretrained(model_dir, **kwargs)
         model.load_tokenizer(model_dir)
-        print("[Init] Model loaded successfully!")
+        print(f"[Init] Model loaded successfully! (took {time.time() - load_tic:.1f}s)")
 
         return cls(model, attn_impl=attn_impl, moe_impl=moe_impl)
 
@@ -264,6 +279,9 @@ class HunyuanPanoPipeline:
         print(f"  Task type:       {bot_task}")
         print(f"  System prompt:   {use_system_prompt}")
 
+        torch.cuda.synchronize()
+        torch.cuda.reset_peak_memory_stats()
+        infer_tic = time.time()
         cot_text, samples = self.model.generate_image(
             prompt=prompt,
             image=[image],
@@ -286,6 +304,8 @@ class HunyuanPanoPipeline:
             taylor_cache_low_freqs_order=taylor_cache_low_freqs_order,
             taylor_cache_high_freqs_order=taylor_cache_high_freqs_order,
         )
+        torch.cuda.synchronize()
+        print(f"[Timing] Inference took {time.time() - infer_tic:.1f}s | Peak VRAM: {_cuda_peak_mem_str()}")
 
         if cot_text:
             print(f"  Reasoning trace: {cot_text}")
@@ -405,6 +425,7 @@ def parse_args():
 
 
 def main(args):
+    total_tic = time.time()
     # Reproducibility
     if args.reproduce:
         set_reproducibility(True, global_seed=args.seed)
@@ -451,6 +472,7 @@ def main(args):
     Path(save_path).parent.mkdir(parents=True, exist_ok=True)
     output.save(save_path)
     print(f"Image saved to {save_path}")
+    print(f"[Timing] Total (load + inference) took {time.time() - total_tic:.1f}s")
 
 
 if __name__ == "__main__":

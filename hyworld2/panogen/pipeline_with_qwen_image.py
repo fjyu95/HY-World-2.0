@@ -35,6 +35,7 @@ Usage:
 
 import argparse
 import os
+import time
 import numpy as np
 from pathlib import Path
 from PIL import Image
@@ -56,6 +57,16 @@ GENERAL_NEGATIVE_PROMPT = (
     "过度光滑，画面具有AI感。人脸畸形。巨大物体，巨大建筑，近景特写，近景压迫，比例失调。"
     "车，车辆。画面上方的树叶。"
 )
+
+
+def _cuda_peak_mem_str() -> str:
+    """Per-device peak allocated VRAM, e.g. 'cuda:0=12.3GB, cuda:1=0.0GB'."""
+    if not torch.cuda.is_available():
+        return "n/a"
+    return ", ".join(
+        f"cuda:{i}={torch.cuda.max_memory_allocated(i) / 1024**3:.1f}GB"
+        for i in range(torch.cuda.device_count())
+    )
 
 
 # ============================================================
@@ -139,11 +150,12 @@ class HunyuanPanoPipeline:
             torch_dtype: Torch dtype for the model. Defaults to bfloat16.
         """
         print(f"[Init] Loading base model from {pretrained_model_name_or_path} ...")
+        load_tic = time.time()
         pipe = PanoDiffusionPipeline.from_pretrained(
             pretrained_model_name_or_path,
             torch_dtype=torch_dtype,
         ).to("cuda")
-        print("[Init] Base model loaded successfully!")
+        print(f"[Init] Base model loaded successfully! (took {time.time() - load_tic:.1f}s)")
 
         if lora_path is not None:
             print(f"[Init] Loading LoRA weights from {lora_path} (subfolder={lora_subfolder}) ...")
@@ -218,6 +230,9 @@ class HunyuanPanoPipeline:
         print(f"  Infer steps:      {num_inference_steps}")
         print(f"  Seed:             {seed}")
 
+        torch.cuda.synchronize()
+        torch.cuda.reset_peak_memory_stats()
+        infer_tic = time.time()
         output = self.pipe(
             image=pil_image,
             prompt=full_positive,
@@ -230,6 +245,8 @@ class HunyuanPanoPipeline:
             height=height,
             width=width,
         ).images[0]
+        torch.cuda.synchronize()
+        print(f"[Timing] Inference took {time.time() - infer_tic:.1f}s | Peak VRAM: {_cuda_peak_mem_str()}")
 
         return circular_blend_edges(output, blend_width)
 
@@ -290,6 +307,7 @@ def parse_args():
 
 
 def main(args):
+    total_tic = time.time()
     # Reproducibility
     if args.reproduce:
         set_reproducibility(True, global_seed=args.seed)
@@ -324,6 +342,7 @@ def main(args):
     Path(save_path).parent.mkdir(parents=True, exist_ok=True)
     output.save(save_path)
     print(f"Image saved to {save_path}")
+    print(f"[Timing] Total (load + inference) took {time.time() - total_tic:.1f}s")
 
 
 if __name__ == "__main__":
