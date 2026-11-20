@@ -3234,7 +3234,8 @@ def process_single_scene(scene_dir, scene_name, mesh, args, segmentation_data=No
             
             os.makedirs(os.path.join(scene_dir, "navmesh"), exist_ok=True)
             with open(os.path.join(scene_dir, "navmesh/reconstruct_pairs.json"), 'w') as f:
-                json.dump(topk_json_data, f, indent=4)
+                json.dump(topk_json_data, f, indent=4,
+                          default=lambda o: o.tolist() if isinstance(o, np.ndarray) else float(o))
 
             
             combined_vis_path = os.path.join(scene_dir, "navmesh/vis_recon.ply")

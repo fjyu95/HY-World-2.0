@@ -297,7 +297,7 @@ def _distributed_worker(
         torch.distributed.barrier()
         torch.distributed.destroy_process_group()
     if verbose:
-        print("Job Done for worker: %d / %d" % (world_rank + 1, world_size))
+        print("\nJob Done for worker: %d / %d" % (world_rank + 1, world_size))
     return True
 
 
@@ -322,6 +322,7 @@ def cli(fn: Callable, args: Any, verbose: bool = False) -> bool:
     import time as _time
 
     assert torch.cuda.is_available(), "CUDA device is required!"
+    _t_start = _time.time()
     print(f"[DDP-DEBUG] cli() entered. PID={os.getpid()}", flush=True)
 
     if "OMPI_COMM_WORLD_SIZE" in os.environ:  # multi-node
@@ -370,7 +371,11 @@ def cli(fn: Callable, args: Any, verbose: bool = False) -> bool:
         )
         try:
             process_context.join()
-            print("[DDP-DEBUG] All workers joined successfully.", flush=True)
+            print(
+                f"\n[DDP-DEBUG] All workers joined successfully. "
+                f"Total elapsed: {_time.time() - _t_start:.1f}s\n",
+                flush=True,
+            )
         except KeyboardInterrupt:
             print("[DDP-DEBUG] KeyboardInterrupt caught, terminating workers ...", flush=True)
             # this is important.
@@ -387,5 +392,10 @@ def cli(fn: Callable, args: Any, verbose: bool = False) -> bool:
                     print("process " + str(i) + " finished", flush=True)
         return True
     else:
-        print("[DDP-DEBUG] Single GPU mode, running worker directly.", flush=True)
-        return _distributed_worker(0, 1, fn=fn, args=args)
+        print("[DDP-DEBUG] Single GPU mode, running worker directly.\n", flush=True)
+        result = _distributed_worker(0, 1, fn=fn, args=args)
+        print(
+            f"[DDP-DEBUG] Worker finished. Total elapsed: {_time.time() - _t_start:.1f}s\n",
+            flush=True,
+        )
+        return result

@@ -279,7 +279,10 @@ class WorldMirrorPipeline:
 
         if is_distributed:
             if not dist.is_initialized():
-                dist.init_process_group(backend="nccl")
+                dist.init_process_group(
+                    backend="nccl",
+                    timeout=timedelta(minutes=30),
+                )
             rank = dist.get_rank()
             world_size = dist.get_world_size()
             local_rank = int(os.environ.get("LOCAL_RANK", rank))

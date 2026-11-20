@@ -2,17 +2,38 @@
 # Full worldgen pipeline example on examples/worldgen/case000.
 # Prereqs: conda env `hyworld2`; vLLM Qwen3-VL server up (see vllm_setup.md);
 #          models pre-downloaded (README "Pre-download" block).
+#
+# Timing summary (1/2/4 GPUs; measured WITHOUT navmesh, i.e. no --apply_nav_traj):
+#   Stage 1 Trajectory Planning :  97s   / 72s    / 72s
+#   Stage 2 Trajectory Rendering:  65s   / 42s    / 32s
+#   Stage 3 World Expansion     :  OOM   / 505s   / 70min  (FSDP data-parallel, may be slower)
+#   Stage 4 GS Training Data    :  114s  / 58s    / 40s
+#   Stage 5 3DGS Training       :  2min  / 3.5min / 15min  (no mesh export)
+#   Stage 6 Mesh Export         :  ~4.5min (CPU TSDF, GPU-independent)
+#   Total                       :  ~11min (excl. Stage 3, which OOMs) / ~19min / ~92min (~1.5h)
+
+# Timing summary WITH navmesh (after navmesh fix, 1/2/4 GPUs):
+#   Stage 1 Trajectory Planning :  ~16min  / ~16min  / ~16min  (end-to-end; timer-tracked parts ~281.7s, rest is model loading + vLLM)
+#   Stage 2 Trajectory Rendering:  580s    / 360s    / 220s
+#   Stage 3 World Expansion     :  OOM     / 1800s   / 3h05min
+#   Stage 4 GS Training Data    :  160s    / 75s     / 48s
+#   Stage 5 3DGS Training       :  2min    / 3.5min  / 13.5min (script pins $FIRST_GPU; multi-GPU values are historical)
+#   Stage 6 Mesh Export         :  216s    / 212s     / 200s    (CPU TSDF, GPU-independent)
+#   Total                       :  ~34min (excl. Stage 3, which OOMs) / ~57min / ~3.7h
+#   Note: Stage 3/5 slower with more GPUs is expected — PRO 5000 has no NVLink,
+#         DDP/FSDP sync goes over PCIe so communication cost grows with GPU count.
+
 set -euo pipefail
 cd "$(dirname "$0")"
 
-TARGET_PATH=${TARGET_PATH:-../../examples/worldgen/case001}
+TARGET_PATH=${TARGET_PATH:-../../examples/worldgen/case000}
 RESULT_DIR=${RESULT_DIR:-$TARGET_PATH/output}
 LLM_ADDR=${LLM_ADDR:-localhost}
 LLM_PORT=${LLM_PORT:-8001}
 LLM_NAME=${LLM_NAME:-Qwen/Qwen3-VL-8B-Instruct}
 
 # GPUs for multi-GPU stages (vLLM server GPUs are separate)
-GPUS=${GPUS:-0,5}
+GPUS=${GPUS:-4,5}
 FIRST_GPU=${GPUS%%,*}
 NPROC=$(echo "$GPUS" | tr ',' '\n' | wc -l)
 
@@ -25,31 +46,28 @@ run_cmd() {
     CUDA_VISIBLE_DEVICES=$vis "$@"
 }
 
-echo "==> Stage 1: Trajectory Planning (single GPU)"
+echo "==> Stage 1: Trajectory Planning ($NPROC GPU)"
 run_cmd python traj_generate.py --target_path "$TARGET_PATH" \
     --llm_addr "$LLM_ADDR" --llm_port "$LLM_PORT" --llm_name "$LLM_NAME" \
     --apply_nav_traj --apply_up_route --apply_recon_iteration --force_vlm
 
-# # 1/2/4卡 97s 72s 72s 
-# # exit 0
+# exit 0
 
 echo "==> Stage 2: Trajectory Rendering ($NPROC GPUs)"
 run_cmd torchrun --nproc_per_node "$NPROC" traj_render.py --target_path "$TARGET_PATH" \
     --llm_addr "$LLM_ADDR" --llm_port "$LLM_PORT" --llm_name "$LLM_NAME"
 
-# # 65s 42s 32s
-# # exit 0
+# exit 0
 
 echo "==> Stage 3: World Expansion / Keyframe Generation ($NPROC GPUs + FSDP)"
-run_cmd torchrun --nproc_per_node "$NPROC" video_gen.py --target_path "$TARGET_PATH" --fsdp
+# 必须 --fsdp 数据并行，否则单卡OOM
+run_cmd torchrun --nproc_per_node "$NPROC" video_gen.py --target_path "$TARGET_PATH" --fsdp 
 
-# # 1/2/4 OOM/505s/70min
-# # exit 0
+# exit 0
 
 echo "==> Stage 4: GS Training Data ($NPROC GPUs)"
 run_cmd torchrun --nproc_per_node "$NPROC" gen_gs_data.py  --root_path "$TARGET_PATH" --save_normal --split_sky
 
-# 1/2/4 114s/58s/40s
 # exit 0
 
 echo "==> Stage 5: 3DGS Training ($NPROC GPUs)"
@@ -67,7 +85,6 @@ run_cmd "$FIRST_GPU" python -m world_gs_trainer default \
     --disable_viewer # 单卡建议开，不会Viewer running... Ctrl+C to exit，多卡会自动禁用
     # --export_mesh 
 
-# 不输出mesh，1/2/4  2/3.5min/15min
 # exit 0
 
 # Stage 6 (optional): standalone mesh export from saved ckpts — no retraining needed.
@@ -75,16 +92,15 @@ run_cmd "$FIRST_GPU" python -m world_gs_trainer default \
 # fuses via CPU TSDF (GPU VoxelBlockGrid hangs on sm_120 with open3d<=0.18).
 # -> writes $RESULT_DIR/ply/fuse_post.ply and fuse_simplified.ply
 echo "==> Stage 6: Mesh Export (single GPU, CPU TSDF ~4.5min)"
-run_cmd "$FIRST_GPU" python export_mesh.py --gpu_id 0 --data_dir "$TARGET_PATH/gs_data" \
+run_cmd "$GPUS" python export_mesh.py --gpu_id 0 --data_dir "$TARGET_PATH/gs_data" \
     --ckpt "$RESULT_DIR/ckpts/ckpt_1499_rank*.pt" \
     --out_dir "$RESULT_DIR/ply" --voxel_size 0.1
 
-# 实际走的是CPU，4.5min
 # TODO: GPU加速版本
 # exit 0
 
 # Viewer: visualize the trained 3DGS (blocking until Ctrl+C)
 HOST_IP=$(hostname -I | awk '{print $1}')
-echo "==> Stage 6 Viewer: after it starts, open http://$HOST_IP:8081        # same LAN"
+echo "==> Stage 7 Viewer: after it starts, open http://$HOST_IP:8081        # same LAN"
 echo "    or: ssh -L 8081:localhost:8081 <user>@$HOST_IP   # then http://localhost:8081"
 run_cmd "$FIRST_GPU" python show_gs.py --port 8081 --gpu_id 0 --ckpt "$RESULT_DIR/ckpts/ckpt_1499_rank*.pt"

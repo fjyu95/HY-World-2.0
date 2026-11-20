@@ -34,6 +34,7 @@ regex
 
 # Point cloud & 3D
 trimesh
+rtree  # trimesh ray queries in navmesh path (worldgen Stage 1)
 plyfile
 open3d==0.18.0
 pycolmap==3.10.0
